@@ -33,3 +33,5 @@ Thumbs.db
 
 # n8n
 .n8n
+
+check-schema.js
