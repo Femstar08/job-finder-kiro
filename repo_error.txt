@@ -1,0 +1,7 @@
+Repo Error: Cannot read properties of undefined (reading 'id')
+Stack: TypeError: Cannot read properties of undefined (reading 'id')
+    at JobPreferencesRepository.mapRowToJobPreferences (C:\Users\Oluwa\DesktopProjects\job-finder-kiro\packages\backend\src\database\repositories\JobPreferencesRepository.ts:162:15)
+    at JobPreferencesRepository.create (C:\Users\Oluwa\DesktopProjects\job-finder-kiro\packages\backend\src\database\repositories\JobPreferencesRepository.ts:31:19)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async JobPreferencesService.createPreferences (C:\Users\Oluwa\DesktopProjects\job-finder-kiro\packages\backend\src\services\JobPreferencesService.ts:46:12)
+    at async C:\Users\Oluwa\DesktopProjects\job-finder-kiro\packages\backend\src\controllers\JobPreferencesController.ts:27:27

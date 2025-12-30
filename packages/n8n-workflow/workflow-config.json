@@ -1,0 +1,414 @@
+{
+  "name": "Job Finder Daily Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily Job Search Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/n8n/preferences",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Fetch Active Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "job-finder-api-auth",
+          "name": "Job Finder API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "preferences",
+        "options": {}
+      },
+      "name": "Split Preferences",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/n8n/websites",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Fetch Job Websites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "job-finder-api-auth",
+          "name": "Job Finder API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "websites",
+        "options": {}
+      },
+      "name": "Split Websites",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Job scraping logic for different websites\nconst preference = $input.first().json.preference;\nconst website = $input.first().json.website;\n\n// Build search URL based on website template and user preferences\nconst searchParams = {\n  jobTitle: preference.jobTitle,\n  location: preference.location.city || '',\n  keywords: preference.keywords.join(' '),\n  contractTypes: preference.contractTypes\n};\n\n// Replace placeholders in website search URL template\nlet searchUrl = website.searchUrlTemplate;\nfor (const [key, value] of Object.entries(searchParams)) {\n  searchUrl = searchUrl.replace(`{{${key}}}`, encodeURIComponent(value));\n}\n\n// Store context for next nodes\nreturn {\n  searchUrl,\n  preference,\n  website,\n  scrapingConfig: website.scrapingConfig\n};"
+      },
+      "name": "Build Search URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.searchUrl}}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "name": "Scrape Job Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and normalize job data from different website formats\nconst htmlContent = $input.first().json.data;\nconst scrapingConfig = $input.first().json.scrapingConfig;\nconst website = $input.first().json.website;\n\n// Use cheerio-like parsing (simulated for N8N)\nconst jobs = [];\n\n// This would contain site-specific parsing logic\n// For now, we'll simulate the structure\nif (scrapingConfig && scrapingConfig.jobSelector) {\n  // Parse jobs based on website-specific selectors\n  // This is a simplified version - real implementation would use proper HTML parsing\n  \n  // Simulate finding jobs\n  const mockJobs = [\n    {\n      title: \"Software Engineer\",\n      company: \"Tech Corp\",\n      location: \"Remote\",\n      salary: \"$80,000 - $120,000\",\n      contractType: \"permanent\",\n      url: \"https://example.com/job/123\",\n      description: \"Great opportunity for a software engineer...\",\n      postedDate: new Date().toISOString()\n    }\n  ];\n  \n  jobs.push(...mockJobs);\n}\n\n// Normalize job data format\nconst normalizedJobs = jobs.map(job => ({\n  jobTitle: job.title,\n  company: job.company,\n  location: job.location,\n  salary: job.salary,\n  contractType: job.contractType,\n  jobUrl: job.url,\n  sourceWebsite: website.name,\n  jobDescription: job.description,\n  requirements: job.requirements || '',\n  foundAt: new Date().toISOString(),\n  jobHash: require('crypto').createHash('md5')\n    .update(`${job.title}-${job.company}-${job.location}`)\n    .digest('hex')\n}));\n\nreturn normalizedJobs.map(job => ({ job, preference: $input.first().json.preference }));"
+      },
+      "name": "Parse Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Intelligent job matching algorithm\nconst job = $input.first().json.job;\nconst preference = $input.first().json.preference;\n\n// Helper function to check if job matches criteria\nfunction matchesJobTitle(jobTitle, preferenceTitle, keywords) {\n  if (!preferenceTitle && (!keywords || keywords.length === 0)) return true;\n  \n  const titleLower = jobTitle.toLowerCase();\n  \n  // Check if job title contains preference title\n  if (preferenceTitle && titleLower.includes(preferenceTitle.toLowerCase())) {\n    return true;\n  }\n  \n  // Check if job title contains any of the keywords\n  if (keywords && keywords.length > 0) {\n    return keywords.some(keyword => \n      titleLower.includes(keyword.toLowerCase())\n    );\n  }\n  \n  return false;\n}\n\nfunction matchesLocation(jobLocation, preferenceLocation) {\n  if (!preferenceLocation || (!preferenceLocation.city && !preferenceLocation.remote)) {\n    return true;\n  }\n  \n  const locationLower = jobLocation.toLowerCase();\n  \n  // Check for remote work\n  if (preferenceLocation.remote && locationLower.includes('remote')) {\n    return true;\n  }\n  \n  // Check for specific city\n  if (preferenceLocation.city && \n      locationLower.includes(preferenceLocation.city.toLowerCase())) {\n    return true;\n  }\n  \n  return false;\n}\n\nfunction matchesSalary(jobSalary, preferenceSalaryRange) {\n  if (!preferenceSalaryRange || (!preferenceSalaryRange.min && !preferenceSalaryRange.max)) {\n    return true;\n  }\n  \n  // Extract salary numbers from job salary string\n  const salaryNumbers = jobSalary.match(/\\d+[,\\d]*/g);\n  if (!salaryNumbers) return true; // If no salary info, don't filter out\n  \n  const minSalary = parseInt(salaryNumbers[0].replace(/,/g, ''));\n  const maxSalary = salaryNumbers.length > 1 ? \n    parseInt(salaryNumbers[1].replace(/,/g, '')) : minSalary;\n  \n  // Check if job salary range overlaps with preference range\n  if (preferenceSalaryRange.min && maxSalary < preferenceSalaryRange.min) {\n    return false;\n  }\n  \n  if (preferenceSalaryRange.max && minSalary > preferenceSalaryRange.max) {\n    return false;\n  }\n  \n  return true;\n}\n\nfunction matchesContractType(jobContractType, preferenceContractTypes) {\n  if (!preferenceContractTypes || preferenceContractTypes.length === 0) {\n    return true;\n  }\n  \n  return preferenceContractTypes.some(type => \n    jobContractType.toLowerCase().includes(type.toLowerCase())\n  );\n}\n\n// Perform all matching checks\nconst titleMatch = matchesJobTitle(job.jobTitle, preference.jobTitle, preference.keywords);\nconst locationMatch = matchesLocation(job.location, preference.location);\nconst salaryMatch = matchesSalary(job.salary, preference.salaryRange);\nconst contractMatch = matchesContractType(job.contractType, preference.contractTypes);\n\nconst isMatch = titleMatch && locationMatch && salaryMatch && contractMatch;\n\nif (isMatch) {\n  return {\n    job,\n    preference,\n    matchDetails: {\n      titleMatch,\n      locationMatch,\n      salaryMatch,\n      contractMatch\n    }\n  };\n} else {\n  // Return null to filter out non-matches\n  return null;\n}"
+      },
+      "name": "Match Jobs to Preferences",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/n8n/jobs/found",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Store Found Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "job-finder-api-auth",
+          "name": "Job Finder API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check for duplicates and prepare alert data\nconst matchedJob = $input.first().json;\n\n// This would typically check against existing jobs in database\n// For now, we'll assume the API handles duplicate detection\n\n// Prepare alert data\nconst alertData = {\n  userId: matchedJob.preference.userId,\n  jobMatch: matchedJob.job,\n  preferenceProfile: matchedJob.preference.profileName,\n  alertType: 'job_match',\n  timestamp: new Date().toISOString()\n};\n\nreturn alertData;"
+      },
+      "name": "Prepare Alert Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/n8n/jobs/matches",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Send Job Match Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2660,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "job-finder-api-auth",
+          "name": "Job Finder API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log workflow execution results\nconst executionData = {\n  workflowId: $workflow.id,\n  executionId: $execution.id,\n  timestamp: new Date().toISOString(),\n  status: 'completed',\n  processedJobs: $input.all().length,\n  matchedJobs: $input.all().filter(item => item.json.job).length,\n  errors: []\n};\n\nconsole.log('Workflow execution completed:', executionData);\n\nreturn executionData;"
+      },
+      "name": "Log Execution Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handling and logging\nconst error = $input.first().json.error || $input.first().json;\n\nconst errorData = {\n  workflowId: $workflow.id,\n  executionId: $execution.id,\n  timestamp: new Date().toISOString(),\n  errorType: error.name || 'UnknownError',\n  errorMessage: error.message || 'An error occurred',\n  errorStack: error.stack,\n  nodeData: $input.first().json\n};\n\nconsole.error('Workflow error:', errorData);\n\n// Send error notification to admin\nreturn {\n  ...errorData,\n  alertType: 'workflow_error',\n  severity: 'high'\n};"
+      },
+      "name": "Handle Errors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.processedJobs}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Check If Jobs Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2220,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Job Search Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Preferences": {
+      "main": [
+        [
+          {
+            "node": "Split Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Preferences": {
+      "main": [
+        [
+          {
+            "node": "Fetch Job Websites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Job Websites": {
+      "main": [
+        [
+          {
+            "node": "Split Websites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Websites": {
+      "main": [
+        [
+          {
+            "node": "Build Search URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Search URL": {
+      "main": [
+        [
+          {
+            "node": "Scrape Job Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Job Website": {
+      "main": [
+        [
+          {
+            "node": "Parse Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Job Data": {
+      "main": [
+        [
+          {
+            "node": "Match Jobs to Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Jobs to Preferences": {
+      "main": [
+        [
+          {
+            "node": "Store Found Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Found Jobs": {
+      "main": [
+        [
+          {
+            "node": "Check If Jobs Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Jobs Found": {
+      "main": [
+        [
+          {
+            "node": "Prepare Alert Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Execution Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert Data": {
+      "main": [
+        [
+          {
+            "node": "Send Job Match Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Job Match Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Execution Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "America/New_York",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "1"
+}
