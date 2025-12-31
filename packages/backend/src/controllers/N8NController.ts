@@ -77,8 +77,8 @@ export class N8NController {
       });
 
       // Process each job for duplicates
-      const processedJobs = [];
-      const duplicateJobs = [];
+      const processedJobs: any[] = [];
+      const duplicateJobs: any[] = [];
 
       for (const job of jobs) {
         const isDuplicate = await this.duplicateDetectionService.detectDuplicates(job);

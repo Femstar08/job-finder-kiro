@@ -82,7 +82,7 @@ export class JobMatchRepository extends BaseRepository {
       WHERE ${whereClause}
     `;
     const countResult = await this.query(countQuery, values);
-    const total = parseInt(countResult.rows[0].total);
+    const total = parseInt((countResult.rows[0] as unknown as { total: string }).total);
 
     // Get paginated results
     const dataQuery = `
@@ -148,7 +148,7 @@ export class JobMatchRepository extends BaseRepository {
       WHERE ${whereClause}
     `;
     const countResult = await this.query(countQuery, values);
-    const total = parseInt(countResult.rows[0].total);
+    const total = parseInt((countResult.rows[0] as unknown as { total: string }).total);
 
     // Get paginated results
     const dataQuery = `
@@ -340,11 +340,11 @@ export class JobMatchRepository extends BaseRepository {
     const row = result.rows[0];
 
     return {
-      totalMatches: parseInt(row.total_matches),
-      appliedJobs: parseInt(row.applied_jobs),
-      interviewedJobs: parseInt(row.interviewed_jobs),
-      rejectedJobs: parseInt(row.rejected_jobs),
-      offeredJobs: parseInt(row.offered_jobs)
+      totalMatches: parseInt((row as unknown as { total_matches: string }).total_matches),
+      appliedJobs: parseInt((row as unknown as { applied_jobs: string }).applied_jobs),
+      interviewedJobs: parseInt((row as unknown as { interviewed_jobs: string }).interviewed_jobs),
+      rejectedJobs: parseInt((row as unknown as { rejected_jobs: string }).rejected_jobs),
+      offeredJobs: parseInt((row as unknown as { offered_jobs: string }).offered_jobs)
     };
   }
 
@@ -376,7 +376,7 @@ export class JobMatchRepository extends BaseRepository {
 
     const stats: Record<string, number> = {};
     result.rows.forEach(row => {
-      stats[row.source_website] = parseInt(row.count);
+      stats[row.source_website] = parseInt((row as unknown as { count: string }).count);
     });
 
     return stats;
@@ -546,11 +546,11 @@ export class JobMatchRepository extends BaseRepository {
     const row = result.rows[0];
 
     return {
-      totalJobMatches: parseInt(row.total_job_matches),
-      jobMatchesNearExpiry: parseInt(row.job_matches_near_expiry),
-      archivedJobMatches: parseInt(row.archived_job_matches),
-      oldestJobMatch: row.oldest_job_match ? new Date(row.oldest_job_match) : undefined,
-      newestJobMatch: row.newest_job_match ? new Date(row.newest_job_match) : undefined,
+      totalJobMatches: parseInt((row as unknown as { total_job_matches: string }).total_job_matches),
+      jobMatchesNearExpiry: parseInt((row as unknown as { job_matches_near_expiry: string }).job_matches_near_expiry),
+      archivedJobMatches: parseInt((row as unknown as { archived_job_matches: string }).archived_job_matches),
+      oldestJobMatch: (row as any).oldest_job_match ? new Date((row as any).oldest_job_match) : undefined,
+      newestJobMatch: (row as any).newest_job_match ? new Date((row as any).newest_job_match) : undefined,
     };
   }
 }

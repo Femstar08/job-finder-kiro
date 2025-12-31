@@ -596,7 +596,7 @@ export class JobMatchService {
   async storeScrapedJobs(jobs: any[]): Promise<any[]> {
     // Store scraped jobs in a temporary table or process them immediately
     // For now, we'll process them immediately and return the stored jobs
-    const storedJobs = [];
+    const storedJobs: any[] = [];
 
     for (const job of jobs) {
       try {
@@ -616,7 +616,7 @@ export class JobMatchService {
   }
 
   async storeJobMatches(matches: N8NJobMatch[]): Promise<N8NJobMatch[]> {
-    const storedMatches = [];
+    const storedMatches: any[] = [];
 
     for (const match of matches) {
       try {

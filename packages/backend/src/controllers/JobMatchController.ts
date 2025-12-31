@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { JobMatchService } from '../services/JobMatchService';
-import { ApplicationStatus } from '../types';
+import { ApplicationStatus, AuthenticatedRequest } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 
 // Default user ID for no-auth mode
