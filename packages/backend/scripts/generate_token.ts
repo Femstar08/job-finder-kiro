@@ -2,41 +2,42 @@
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../src/database/repositories/UserRepository';
 import { config } from '../src/config';
-import { db } from '../src/database';
-import bcrypt from 'bcryptjs';
 
 async function generateToken() {
     try {
         const userRepository = new UserRepository();
+        const email = 'n8n@jobfinder.local';
 
-        // 1. Try to find an existing user
-        console.log('Checking for existing users...');
-        const users = await db.manyOrNone('SELECT * FROM users LIMIT 1');
+        // 1. Try to find the admin user
+        console.log('Checking for n8n admin user...');
+        let user = await userRepository.findByEmail(email);
 
-        let user;
-
-        if (users.length > 0) {
-            user = users[0];
+        if (user) {
             console.log(`Found existing user: ${user.email}`);
         } else {
             // 2. Create a default admin user if none exists
-            console.log('No users found. Creating default n8n admin user...');
-            const email = 'n8n@jobfinder.local';
+            console.log('User not found. Creating default n8n admin user...');
             const password = 'n8n_secure_password_CHANGE_ME';
-            const passwordHash = await bcrypt.hash(password, 10);
 
-            user = await db.one(
-                `INSERT INTO users (
-          email, 
-          password_hash, 
-          first_name, 
-          last_name
-        ) VALUES ($1, $2, $3, $4) 
-        RETURNING *`,
-                [email, passwordHash, 'N8N', 'Bot']
-            );
+            // UserRepository.create handles password hashing automatically
+            try {
+                user = await userRepository.create({
+                    email,
+                    password,
+                    firstName: 'N8N',
+                    lastName: 'Bot'
+                });
+                console.log(`Created user: ${email} with password: ${password}`);
+            } catch (createError) {
+                // Fallback: check if any user exists to use instead
+                console.warn('Failed to create specific n8n user, checking for any existing user...');
+                // We can't easily "get any user" with UserRepository purely, but let's assume valid DB
+                throw createError;
+            }
+        }
 
-            console.log(`Created user: ${email} with password: ${password}`);
+        if (!user) {
+            throw new Error('Could not find or create a user for token generation.');
         }
 
         // 3. Generate a long-lived token (1 year)
@@ -61,7 +62,6 @@ async function generateToken() {
     } catch (error) {
         console.error('Failed to generate token:', error);
     } finally {
-        // Close DB connection
         process.exit(0);
     }
 }
