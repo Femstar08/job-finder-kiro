@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 
+require('dotenv').config({ path: './packages/backend/.env' });
 const { createClient } = require('@supabase/supabase-js');
 
-// Use the same credentials from your .env file
-const supabaseUrl = 'https://usjgkdmxwtiuducfshkq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzamdrZG14d3RpdWR1Y2ZzaGtxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDg2MzMyNSwiZXhwIjoyMDgwNDM5MzI1fQ.RjNeyj1vo7qTVD7sTnrjZfzNEwA8k92oqkgzOIXn7_c';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing environment variables. Please check your .env file.');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -14,7 +19,7 @@ async function testDatabase() {
   try {
     // Test connection
     console.log('1. Testing Supabase connection...');
-    
+
     // Test if jf_users table exists
     console.log('2. Checking if jf_users table exists...');
     const { data: users, error: usersError } = await supabase
@@ -41,7 +46,7 @@ async function testDatabase() {
     // Test inserting a user
     console.log('3. Testing user creation...');
     const testEmail = `test-${Date.now()}@example.com`;
-    
+
     const { data: newUser, error: insertError } = await supabase
       .from('jf_users')
       .insert({
@@ -70,7 +75,7 @@ async function testDatabase() {
 
   } catch (error) {
     console.error('❌ Database test failed:', error.message);
-    
+
     if (error.message.includes('Invalid API key')) {
       console.log('\n💡 API key issue - check your Supabase credentials');
     }
