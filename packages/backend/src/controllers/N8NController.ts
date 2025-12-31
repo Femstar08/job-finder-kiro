@@ -169,7 +169,7 @@ export class N8NController {
           searchPath: '/jobs',
           enabled: true,
           rateLimit: 1000, // ms between requests
-          selectors: {
+          scrapingConfig: {
             jobCard: '.jobsearch-SerpJobCard',
             title: '.jobTitle a',
             company: '.companyName',
@@ -184,7 +184,7 @@ export class N8NController {
           searchPath: '/jobs/search',
           enabled: true,
           rateLimit: 2000,
-          selectors: {
+          scrapingConfig: {
             jobCard: '.job-search-card',
             title: '.base-search-card__title',
             company: '.base-search-card__subtitle',
@@ -198,7 +198,7 @@ export class N8NController {
           searchPath: '/Job/jobs.htm',
           enabled: true,
           rateLimit: 1500,
-          selectors: {
+          scrapingConfig: {
             jobCard: '.react-job-listing',
             title: '.jobTitle',
             company: '.employerName',
