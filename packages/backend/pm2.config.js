@@ -2,8 +2,9 @@ module.exports = {
     apps: [
         {
             name: 'job-finder-backend',
-            script: 'src/index.ts',
-            interpreter: '/usr/bin/ts-node', // path to global ts-node on VPS
+            script: 'dist/index.js',
+            exec_mode: 'fork',
+            instances: 1,
             env: {
                 NODE_ENV: 'production',
                 PORT: 3002
